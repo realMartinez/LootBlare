@@ -1,0 +1,73 @@
+<Ui xmlns="http://www.blizzard.com/wow/ui/"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.blizzard.com/wow/ui/ ..\FrameXML\UI.xsd">
+
+    <Frame name="LootBlareMSPlusFrame" parent="UIParent" hidden="true" movable="true" enableMouse="true">
+        <Size>
+            <AbsDimension x="300" y="400"/>
+        </Size>
+        <Anchors>
+            <Anchor point="CENTER"/>
+        </Anchors>
+        <Backdrop bgFile="Interface\DialogFrame\UI-DialogBox-Background" 
+                  edgeFile="Interface\DialogFrame\UI-DialogBox-Border" 
+                  tile="true">
+            <BackgroundInsets>
+                <AbsInset left="11" right="12" top="12" bottom="11"/>
+            </BackgroundInsets>
+        </Backdrop>
+        <Layers>
+            <Layer level="ARTWORK">
+                <FontString name="$parentTitle" inherits="GameFontNormal" text="MS+">
+                    <Anchors>
+                        <Anchor point="TOP" relativePoint="TOP">
+                            <Offset x="0" y="-10"/>
+                        </Anchor>
+                    </Anchors>
+                </FontString>
+            </Layer>
+        </Layers>
+        <Frames>
+            <!-- Close Button -->
+            <Button name="$parentCloseButton" inherits="UIPanelCloseButton">
+                    <Anchors>
+                        <Anchor point="TOPRIGHT" relativeTo="LootBlareMSPlusFrame" relativePoint="TOPRIGHT">
+                            <Offset>
+                                <AbsDimension x="+15" y="+15"/>
+                            </Offset>
+                        </Anchor>
+                    </Anchors>
+                <Scripts>
+                    <OnClick>
+                        this:GetParent():Hide();
+                        PlaySound("gsTitleOptionOK");
+                    </OnClick>
+                </Scripts>
+            </Button>
+
+            <!-- Content Frame -->
+            <Frame name="$parentContent">
+                <Anchors>
+                    <Anchor point="TOPLEFT" relativeTo="$parent" x="10" y="-30"/>
+                    <Anchor point="BOTTOMRIGHT" relativeTo="$parent" x="-10" y="10"/>
+                </Anchors>
+            </Frame>
+        </Frames>
+        <Scripts>
+            <OnLoad>
+                this:RegisterForDrag("LeftButton");
+                this:SetMovable(1);
+                this:SetUserPlaced(true);
+            </OnLoad>
+            <OnDragStart>
+                this:StartMoving();
+                this.isMoving = true;
+            </OnDragStart>
+            <OnDragStop>
+                this:StopMovingOrSizing();
+                this.isMoving = false;
+                -- SaveFramePosition(this)
+            </OnDragStop>
+        </Scripts>
+    </Frame>
+</Ui>

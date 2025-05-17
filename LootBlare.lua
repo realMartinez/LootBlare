@@ -2,6 +2,7 @@
 local weird_vibes_mode = true
 local srRollMessages = {}
 local msRollMessages = {}
+local msPlusRollMessages = {}
 local osRollMessages = {}
 local tmogRollMessages = {}
 local rollers = {}
@@ -13,10 +14,12 @@ local discover = CreateFrame("GameTooltip", "CustomTooltip1", UIParent, "GameToo
 LootBlare.masterLooter = nil
 local srRollCap = 100
 local msRollCap = 100
+local msPlusRollCap = 120
 local osRollCap = 99
 local tmogRollCap = 98
 
 LootBlare.rollBonuses = LootBlare.rollBonuses or {}
+LootBlare.msplus = LootBlare.msplus or {}
 local currentItem = ""
 local importText = "" -- will hold the imported text
 
@@ -43,6 +46,7 @@ local DEFAULT_TEXT_COLOR = "FFFFFF00"
 --local SR_TEXT_COLOR = "FFFF0000"
 local SR_TEXT_COLOR = "FFFF0000"
 local MS_TEXT_COLOR = "FFFFFF00"
+local MSPlus_TEXT_COLOR = "00FFFF00"
 local OS_TEXT_COLOR = "FF00FF00"
 local TM_TEXT_COLOR = "FF00FFFF"
 
@@ -60,6 +64,7 @@ end
 local function resetRolls()
   srRollMessages = {}
   msRollMessages = {}
+  msPlusRollMessages = {}
   osRollMessages = {}
   tmogRollMessages = {}
   rollers = {}
@@ -100,11 +105,13 @@ local function colorMsg(message, isSR)
     textColor = SR_TEXT_COLOR
     --print("[DEBUG] SR" .. msg)
   elseif string.find(msg, "-"..msRollCap) then
-    textColor = MS_TEXT_COLOR
+    textColor = MS_TEXT_COLOR  
   elseif string.find(msg, "-"..osRollCap) then
     textColor = OS_TEXT_COLOR
   elseif string.find(msg, "-"..tmogRollCap) then
     textColor = TM_TEXT_COLOR
+  else
+    textColor = MSPlus_TEXT_COLOR
   end
 
   colored_msg = "|c" .. classColor .. "" .. message.roller .. "|r |c" .. textColor .. message_end .. "|r"
@@ -135,6 +142,14 @@ local function CheckItem(link)
   end
   return false
 end
+
+   local function GetPointsByName(name)
+        for i, member in pairs(LootBlare.msplus) do 
+            if member.name == name then
+                return member.points
+            end
+        end
+    end
 
 local function CreateCloseButton(frame)
   -- Add a close button
@@ -222,7 +237,7 @@ local function CreateItemRollFrame()
   frame:SetScript("OnDragStop", function () frame:StopMovingOrSizing() end)
   CreateCloseButton(frame)
   CreateActionButton(frame, "SR", "Roll for Soft Reserve", 1, function() RandomRoll(1,srRollCap) end)
-  CreateActionButton(frame, "MS", "Roll for Main Spec", 2, function() RandomRoll(1,msRollCap) end)
+  CreateActionButton(frame, "MS", "Roll for Main Spec", 2, function() RandomRoll(1,100+GetPointsByName(UnitName("player"))) end)
   CreateActionButton(frame, "OS", "Roll for Off Spec", 3, function() RandomRoll(1,osRollCap) end)
   CreateActionButton(frame, "TM", "Roll for Transmog", 4, function() RandomRoll(1,tmogRollCap) end)
   frame:Hide()
@@ -376,6 +391,12 @@ local function UpdateTextArea(frame)
     count = count + 1
   end
   for i, v in ipairs(msRollMessages) do
+    if count >= 6 then break end
+    colored_msg = v.msg
+    text = text .. colorMsg(v, false) .. "\n"
+    count = count + 1
+  end
+    for i, v in ipairs(msPlusRollMessages) do
     if count >= 6 then break end
     colored_msg = v.msg
     text = text .. colorMsg(v, false) .. "\n"
@@ -597,6 +618,10 @@ local function HandleChatMessage(event, message, sender)
           table.insert(osRollMessages, message)
         elseif maxRoll == tostring(tmogRollCap) then
           table.insert(tmogRollMessages, message)
+        else
+          if tonumber(maxRoll) < 100 then return end
+          if tonumber(maxRoll) > msPlusRollCap then return end
+          table.insert(msPlusRollMessages, message)
         end
         --print("[DEBUG] Final roll inserted with bonus =" .. tostring(bonus) .. "->" .. tostring(roll))
         --print("[DEBUG] Final message:"  .. msg)
@@ -689,7 +714,8 @@ SlashCmdList["LOOTBLARE"] = function(msg)
     lb_print("Type /lb autoClose on/off to enable/disable auto closing the frame after the time has elapsed.")
     lb_print("Type /lb settings to see the current settings.")
     lb_print("Type /lb import to open import window.")
-    lb_print("Type /lb list to print out the SR+ list.")
+    lb_print("Type /lb ms to open MS+1 window.")
+    lb_print("Type /lb debug to print out the SR+ and MS+1 list.")
   elseif msg == "settings" then
     lb_print("Frame shown duration: " .. FrameShownDuration .. " seconds.")
     lb_print("Auto closing: " .. (FrameAutoClose and "on" or "off"))
@@ -719,28 +745,37 @@ SlashCmdList["LOOTBLARE"] = function(msg)
     else
       lb_print("Invalid option. Please enter 'on' or 'off'.")
     end
-  elseif msg == "list" then
+  elseif msg == "debug" then
     if not LootBlare or not LootBlare.rollBonuses then
+      local hasEntries = false
+
+      for player, items in pairs(LootBlare.rollBonuses) do
+          if type(items) == "table" then
+              for itemID, bonus in pairs(items) do
+                  hasEntries = true
+                  DEFAULT_CHAT_FRAME:AddMessage(string.format("[LootBlare] %s -> ItemID: %s, Bonus: %s", player, tostring(itemID), tostring(bonus)), 1, 1, 0)
+              end
+          end
+      end
+      if not hasEntries then
+          DEFAULT_CHAT_FRAME:AddMessage("[LootBlare] rollBonuses table is empty", 1, 0, 0)
+      end
+    else
           DEFAULT_CHAT_FRAME:AddMessage("[LootBlare] rollBonuses table not initialized", 1, 0, 0)
-          return
     end
     if LootBlare and LootBlare.masterLooter then
       DEFAULT_CHAT_FRAME:AddMessage("[LootBlare] LootMaster: "..LootBlare.masterLooter, 1, 1, 0)
     end
-    
-    local hasEntries = false
-
-    for player, items in pairs(LootBlare.rollBonuses) do
-        if type(items) == "table" then
-            for itemID, bonus in pairs(items) do
-                hasEntries = true
-                DEFAULT_CHAT_FRAME:AddMessage(string.format("[LootBlare] %s -> ItemID: %s, Bonus: %s", player, tostring(itemID), tostring(bonus)), 1, 1, 0)
-            end
-        end
+    if LootBlare and LootBlare.msplus then 
+      for i, member in pairs(LootBlare.msplus) do
+        DEFAULT_CHAT_FRAME:AddMessage("[LootBlare] MS+1 "..member.name .. " " .. member.points, 1, 1, 0)
+      end
     end
-
-    if not hasEntries then
-        DEFAULT_CHAT_FRAME:AddMessage("[LootBlare] rollBonuses table is empty", 1, 0, 0)
+  elseif msg == "ms" then
+    if LootBlareMSPlusFrame:IsShown() then
+      LootBlareMSPlusFrame:Hide()
+    else
+      LootBlareMSPlusFrame:Show()
     end
   else
   lb_print("Invalid command. Type /lb help for a list of commands.")

@@ -27,7 +27,7 @@ button:SetScript("OnClick", function()
   if arg1 == "LeftButton" then
     SlashCmdList["LOOTBLARE"]("import")
   elseif arg1 == "RightButton" then
-    SlashCmdList["LOOTBLARE"]("list")
+    SlashCmdList["LOOTBLARE"]("ms")
   end
   
 end)
