@@ -5,6 +5,12 @@ local PREFIX = "LootBlareKBSync"
 --                            UTILITY
 ---------------------------------------------------------------------
 
+local function OnLeaveGroup()
+    LootBlare.msplus = {}
+    LootBlare:ResetMSPlusTable()
+     DEFAULT_CHAT_FRAME:AddMessage("[LootBlare DEBUG] OnLeaveGroup: Cleared msplus table.", 1, 0, 0)
+end
+
 local function GetRaidMemberNames()
     local names = {}
     for i = 1, GetNumRaidMembers() do
@@ -16,7 +22,7 @@ local function GetRaidMemberNames()
     return names
 end
 
-local function IsSenderMasterLooter(sender)
+function LootBlare:IsSenderMasterLooter(sender)
   local lootMethod, masterLooterPartyID = GetLootMethod()
   if lootMethod == "master" and masterLooterPartyID then
     if masterLooterPartyID == 0 then
@@ -30,12 +36,78 @@ local function IsSenderMasterLooter(sender)
   return false
 end
 
+function LootBlare:ResetMSPlusTable(defaultPoints)
+    defaultPoints = defaultPoints or 0
+    -- Clear the current table
+    LootBlare.msplus = {}
+
+    local numRaidMembers = GetNumRaidMembers()
+
+    if numRaidMembers == 0 then
+        -- Clear scroll frame as well
+        if LootBlare.ClearRows then
+            LootBlare:ClearRows()
+        end
+        if LootBlare.UpdateScrollFrame then
+            LootBlare:UpdateScrollFrame()
+        end
+         DEFAULT_CHAT_FRAME:AddMessage("[LootBlare DEBUG] ResetMSPlusTable: No raid members, msplus cleared.", 1, 0, 0)
+        return
+    end
+
+    for i = 1, numRaidMembers do
+        local name = GetRaidRosterInfo(i)
+        if name then
+            table.insert(LootBlare.msplus, { name = name, points = defaultPoints })
+            DEFAULT_CHAT_FRAME:AddMessage(string.format("[LootBlare DEBUG] ResetMSPlusTable: Added %s with %d points.", name, defaultPoints), 0, 1, 0)
+        end
+    end
+
+    -- Update scroll frame
+    LootBlare:UpdateScrollFrame()
+end
+
+local function UpdateMSPlusTable()
+    if not LootBlare.msplus then
+        LootBlare.msplus = {}
+        DEFAULT_CHAT_FRAME:AddMessage("[LootBlare DEBUG] UpdateMSPlusTable: msplus table was nil, reinitialized.", 1, 0, 0)
+    end
+
+    -- Convert existing list to a lookup for faster access
+    local nameToEntry = {}
+    for _, entry in ipairs(LootBlare.msplus) do
+        nameToEntry[entry.name] = entry
+    end
+
+    local numRaidMembers = GetNumRaidMembers()
+    if numRaidMembers == 0 then
+        DEFAULT_CHAT_FRAME:AddMessage("[LootBlare DEBUG] UpdateMSPlusTable: No raid members to update.", 1, 0, 0)
+        return
+    end
+
+    for i = 1, numRaidMembers do
+        local name = GetRaidRosterInfo(i)
+        if name then
+            if not nameToEntry[name] then
+                -- Add new member with default points
+                table.insert(LootBlare.msplus, { name = name, points = 0 })
+                DEFAULT_CHAT_FRAME:AddMessage(string.format("[LootBlare DEBUG] UpdateMSPlusTable: Added new raid member %s with 0 points.", name), 0, 1, 0)
+            end
+             DEFAULT_CHAT_FRAME:AddMessage(string.format("[LootBlare DEBUG] UpdateMSPlusTable: Member %s already exists, points = %d.", name, nameToEntry[name].points), 0, 0.5, 1)
+            -- If name exists, no overwrite — just keep their current points
+            -- (You can optionally refresh name casing or other values here if needed)
+        end
+    end
+    LootBlare:UpdateScrollFrame()
+end
+
+
 ---------------------------------------------------------------------
 --                    Synchronization - Outbound
 ---------------------------------------------------------------------
 
 local function SendSRSyncMessage()
-    if IsSenderMasterLooter(UnitName("player")) == false then return end
+    if LootBlare:IsSenderMasterLooter(UnitName("player")) == false then return end
     --DEFAULT_CHAT_FRAME:AddMessage("[LootBlare] Sending sr sync message", 1, 0, 0)
     if not LootBlare.rollBonuses then
         DEFAULT_CHAT_FRAME:AddMessage("[LootBlare] No rollBonuses to sync", 1, 0, 0)
@@ -74,7 +146,7 @@ local function SendSRSyncMessage()
 end
 
 local function SendMSSyncMessage()
-    if IsSenderMasterLooter(UnitName("player")) == false then return end
+    if LootBlare:IsSenderMasterLooter(UnitName("player")) == false then return end
     --DEFAULT_CHAT_FRAME:AddMessage("[LootBlare] Sending ms sync message", 1, 0, 0)
     if not LootBlare.msplus then
         DEFAULT_CHAT_FRAME:AddMessage("[LootBlare] No ms+1 to sync", 1, 0, 0)
@@ -96,7 +168,7 @@ local function SendMSSyncMessage()
 
             -- Check if adding more would exceed safe limit
             if string.len(PREFIX .. "MS_DATA " .. batchStr) >= maxLength then
-                SendAddonMessage(PREFIX, "MS_DATA+1 " .. batchStr, "RAID")
+                SendAddonMessage(PREFIX, "MS_DATA " .. batchStr, "RAID")
                 batchStr = ""
             end
     end
@@ -112,7 +184,7 @@ end
 
 -- Sync with entire raid group
 function LootBlare:SyncRaid()
-    if IsSenderMasterLooter(UnitName("player")) == false then return end
+    if LootBlare:IsSenderMasterLooter(UnitName("player")) == false then return end
     --DEFAULT_CHAT_FRAME:AddMessage("[LootBlare] ML Syncing with raid.")
     local currentRaidMembers = GetRaidMemberNames()
     for name in pairs(currentRaidMembers) do
@@ -154,7 +226,7 @@ local function OnRaidUpdate()
 end
 
 local function RequestSync()
-    if IsSenderMasterLooter(UnitName("player")) then 
+    if LootBlare:IsSenderMasterLooter(UnitName("player")) then 
         LootBlare.masterLooter = UnitName("player")
         return
     end
@@ -186,11 +258,11 @@ local function HandleInboundSync(msg, author)
         --DEFAULT_CHAT_FRAME:AddMessage("[LootBlare] Message Received "..msg, 0, 1, 0)
     if string.find(msg, "^START_SR_DATA") then
         -- Note for myself so I dont forget, if the Sync stops working check this in the morning
-        if IsSenderMasterLooter(author) and UnitName("player") == author then return end
+        if LootBlare:IsSenderMasterLooter(author) and UnitName("player") == author then return end
         LootBlare.rollBonuses = {}
         DEFAULT_CHAT_FRAME:AddMessage("[LootBlare] Full sync started by " .. author .. ", cleared all bonuses", 1, 1, 0)   
     elseif string.find(msg, "^SR_DATA ") then
-        if IsSenderMasterLooter(author) and UnitName("player") == author then return end
+        if LootBlare:IsSenderMasterLooter(author) and UnitName("player") == author then return end
         local dataPart = string.sub(msg, string.len("SR_DATA ") + 1)
 
         -- Split by ;
@@ -217,13 +289,13 @@ local function HandleInboundSync(msg, author)
             if not pos then break end
         end
     elseif string.find(msg, "^END_SR_DATA") then
-        if IsSenderMasterLooter(author) and UnitName("player") == author then return end
+        if LootBlare:IsSenderMasterLooter(author) and UnitName("player") == author then return end
         --DEFAULT_CHAT_FRAME:AddMessage("[LootBlare] Sync finished from " .. author, 0, 1, 0)
     elseif string.find(msg, "^START_MS_DATA") then
-        if IsSenderMasterLooter(author) and UnitName("player") == author then return end
+        if LootBlare:IsSenderMasterLooter(author) and UnitName("player") == author then return end
         LootBlare.msplus = {}    
     elseif string.find(msg, "^MS_DATA ") then
-        if IsSenderMasterLooter(author) and UnitName("player") == author then return end
+        if LootBlare:IsSenderMasterLooter(author) and UnitName("player") == author then return end
         local dataPart = string.sub(msg, string.len("MS_DATA ") + 1)
         -- Split by ;
         local pos = 1
@@ -241,15 +313,26 @@ local function HandleInboundSync(msg, author)
             -- Parse entry: player:itemID:bonus
             local _, _, player, bonus = string.find(entry, "^([^:]+):([^:]+)$")
             if player and bonus then
-                LootBlare.msplus[player] = LootBlare.msplus[player] or {}
-                LootBlare.msplus[player] = tonumber(bonus)
-                --DEFAULT_CHAT_FRAME:AddMessage("[LootBlare] Synced: " .. player .. " | ItemID: " .. itemID .. " | Bonus: " .. bonus, 0, 1, 0)
+                 -- Find existing entry and update points, or insert new
+                local found = false
+                for _, member in ipairs(LootBlare.msplus) do
+                    if member.name == player then
+                        member.points = points
+                        found = true
+                        break
+                    end
+                end
+                if not found then
+                    table.insert(LootBlare.msplus, { name = player, points = points })
+                end
+                DEFAULT_CHAT_FRAME:AddMessage("[LootBlare] Synced: " .. player .. " | ItemID: " .. itemID .. " | Bonus: " .. bonus, 0, 1, 0)
             end
 
             if not pos then break end
         end
     elseif string.find(msg, "^END_MS_DATA") then
-        if IsSenderMasterLooter(author) and UnitName("player") == author then return end
+        if LootBlare:IsSenderMasterLooter(author) and UnitName("player") == author then return end
+        UpdateMSPlusTable()
         --DEFAULT_CHAT_FRAME:AddMessage("[LootBlare] Sync finished from " .. author, 0, 1, 0)
     elseif string.find(msg, "^REQ_SYNC") then
         LootBlare.SyncRaid()
@@ -264,7 +347,7 @@ end
 
 -- Add this function to update the master looter and detect "returning" players
 local function DetectReturns()
-    if IsSenderMasterLooter(UnitName("player")) == false then return end
+    if LootBlare:IsSenderMasterLooter(UnitName("player")) == false then return end
     --DEFAULT_CHAT_FRAME:AddMessage("[LootBlare] ML detecting Returns.")
     local currentRaidMembers = {}
     for i = 1, GetNumRaidMembers() do
@@ -295,6 +378,7 @@ frame:SetScript("OnEvent", function()
     elseif event == "RAID_ROSTER_UPDATE" then
         DetectReturns()
         OnRaidUpdate()
+        if LootBlare:IsSenderMasterLooter(UnitName("player")) == true then UpdateMSPlusTable() end 
     elseif event == "CHAT_MSG_ADDON" then
         local prefix, msg, channel, sender = arg1, arg2, arg3, arg4
         if prefix == PREFIX then

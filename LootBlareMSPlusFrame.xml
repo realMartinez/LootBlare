@@ -30,13 +30,13 @@
         <Frames>
             <!-- Close Button -->
             <Button name="$parentCloseButton" inherits="UIPanelCloseButton">
-                    <Anchors>
-                        <Anchor point="TOPRIGHT" relativeTo="LootBlareMSPlusFrame" relativePoint="TOPRIGHT">
-                            <Offset>
-                                <AbsDimension x="+15" y="+15"/>
-                            </Offset>
-                        </Anchor>
-                    </Anchors>
+                <Anchors>
+                    <Anchor point="TOPRIGHT" relativeTo="LootBlareMSPlusFrame" relativePoint="TOPRIGHT">
+                        <Offset>
+                            <AbsDimension x="2" y="2"/>
+                        </Offset>
+                    </Anchor>
+                </Anchors>
                 <Scripts>
                     <OnClick>
                         this:GetParent():Hide();
@@ -44,14 +44,40 @@
                     </OnClick>
                 </Scripts>
             </Button>
-
-            <!-- Content Frame -->
-            <Frame name="$parentContent">
+            <Button name="$parentResetButton" inherits="UIPanelButtonTemplate" text="Reset MS+ Table">
+                <Size>
+                    <AbsDimension x="120" y="25"/>
+                </Size>
                 <Anchors>
-                    <Anchor point="TOPLEFT" relativeTo="$parent" x="10" y="-30"/>
-                    <Anchor point="BOTTOMRIGHT" relativeTo="$parent" x="-10" y="10"/>
+                    <Anchor point="BOTTOM" relativeTo="LootBlareMSPlusFrame" relativePoint="BOTTOM">
+                        <Offset>
+                            <AbsDimension x="0" y="10"/>
+                        </Offset>
+                    </Anchor>
                 </Anchors>
-            </Frame>
+                <Scripts>
+                    <OnClick>
+                        LootBlare:ResetMSPlusTable(0);
+                        PlaySound("gsTitleOptionOK");
+                    </OnClick>
+                </Scripts>
+            </Button>
+            <!-- Scroll Frame -->
+            <ScrollFrame name="LootBlareMsPlusScrollFrame" inherits="UIPanelScrollFrameTemplate">
+                <Anchors>
+                    <Anchor point="TOPLEFT" relativeTo="LootBlareMSPlusFrame" relativePoint="TOPLEFT">
+                        <Offset>
+                            <AbsDimension x="10" y="-30"/>
+                        </Offset>
+                    </Anchor>
+                    <Anchor point="BOTTOMRIGHT" relativeTo="LootBlareMSPlusFrame" relativePoint="BOTTOMRIGHT">
+                        <Offset>
+                            <AbsDimension x="-40" y="30"/>
+                        </Offset>
+                    </Anchor>
+                </Anchors>
+            </ScrollFrame>
+
         </Frames>
         <Scripts>
             <OnLoad>
@@ -66,7 +92,6 @@
             <OnDragStop>
                 this:StopMovingOrSizing();
                 this.isMoving = false;
-                -- SaveFramePosition(this)
             </OnDragStop>
         </Scripts>
     </Frame>
