@@ -246,7 +246,7 @@ local function HandleInboundSync(msg, author)
         -- Note for myself so I dont forget, if the Sync stops working check this in the morning
         if IsSenderMasterLooter(author) and UnitName("player") == author then return end
         LootBlare.rollBonuses = {}
-        DEFAULT_CHAT_FRAME:AddMessage("[LootBlare] Full sync started by " .. author .. ", cleared all bonuses", 1, 1, 0)   
+        --DEFAULT_CHAT_FRAME:AddMessage("[LootBlare] Full sync started by " .. author .. ", cleared all bonuses", 1, 1, 0)   
     elseif string.find(msg, "^SR_DATA ") then
         if IsSenderMasterLooter(author) and UnitName("player") == author then return end
         local dataPart = string.sub(msg, string.len("SR_DATA ") + 1)
@@ -413,7 +413,7 @@ syncFrame:SetScript("OnUpdate", function()
         syncElapsed = 0
         syncPending = false
         syncFrame:Hide()
-        DEFAULT_CHAT_FRAME:AddMessage("[LootBlare] SYNCING ", 1, 1, 0)
+        DEFAULT_CHAT_FRAME:AddMessage("[LootBlare] Syncing ", 1, 1, 0)
         SyncRaid()
         SavePersistentData()
     end
