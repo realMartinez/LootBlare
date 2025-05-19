@@ -704,7 +704,7 @@ local function HandleChatMessage(event, message, sender)
             --print("[DEBUG]: " .. roller .. " -> " .. item .. " = " .. bonus)
           end
         else
-          DEFAULT_CHAT_FRAME:AddMessage("[LootBlare] No bonuses found for " .. roller, 1, 1, 0)
+          --DEFAULT_CHAT_FRAME:AddMessage("[LootBlare] No bonuses found for " .. roller, 1, 1, 0)
         end
         
 
